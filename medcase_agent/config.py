@@ -17,6 +17,10 @@ class Settings:
     model: str
     reasoning_effort: str | None
     output_dir: Path
+    enable_tools: bool
+    max_tool_turns: int
+    curate_citations: bool
+    target_references: int
 
     @classmethod
     def load(
@@ -40,6 +44,10 @@ class Settings:
             model=os.getenv("OPENAI_MODEL", "gpt-4.1"),
             reasoning_effort=_reasoning_effort(os.getenv("OPENAI_REASONING_EFFORT")),
             output_dir=raw_output_dir,
+            enable_tools=_bool_env(os.getenv("MEDCASE_ENABLE_TOOLS"), default=True),
+            max_tool_turns=_int_env(os.getenv("MEDCASE_MAX_TOOL_TURNS"), default=8),
+            curate_citations=_bool_env(os.getenv("MEDCASE_CURATE_CITATIONS"), default=True),
+            target_references=_int_env(os.getenv("MEDCASE_TARGET_REFERENCES"), default=10),
         )
 
 
@@ -62,3 +70,23 @@ def _reasoning_effort(value: str | None) -> str | None:
             "OPENAI_REASONING_EFFORT must be one of: none, minimal, low, medium, high, xhigh."
         )
     return normalized
+
+
+def _bool_env(value: str | None, default: bool) -> bool:
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    raise ValueError("Boolean environment values must be true/false, yes/no, on/off, or 1/0.")
+
+
+def _int_env(value: str | None, default: int) -> int:
+    if value is None or not value.strip():
+        return default
+    parsed = int(value)
+    if parsed < 0:
+        raise ValueError("MEDCASE_MAX_TOOL_TURNS must be 0 or greater.")
+    return parsed

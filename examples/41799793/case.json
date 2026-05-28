@@ -1,0 +1,54 @@
+{
+  "history": [
+    "Patient is a woman in her 60s",
+    "Known history of JAK2-positive essential thrombocythemia diagnosed 10 years earlier",
+    "No splenomegaly or hepatomegaly documented at initial presentation and preoperative evaluation"
+  ],
+  "presentation": [
+    "Presented with a one-week history of jaundice",
+    "Laboratory tests revealed elevated total bilirubin (1.21 mg/dL), direct bilirubin (0.4 mg/dL), indirect bilirubin (0.8 mg/dL), and alkaline phosphatase (119 U/L)",
+    "Peripheral blood values showed a white blood cell count of 10.15 × 103/μL, a red blood cell count of 12 × 106/μL, and a platelet count of 399 × 103/μL"
+  ],
+  "diagnostics": [
+    "Abdominal ultrasonography identified a single 1-cm gallstone",
+    "Resected gallbladder measured 7 × 7.3 cm with a wall thickness of 0.2 cm",
+    "Specimen contained an 8-mm gallstone and a 5-mm lymph node located in the gallbladder neck region",
+    "Histopathological examination of the gallbladder revealed features consistent with chronic cholecystitis",
+    "Histological evaluation of the lymph node demonstrated clusters of atypical cells with multinucleation and nuclear lobulation within fibrotic and hemorrhagic stroma",
+    "Dysplastic megakaryocytes were present focally, comprising approximately 10%–15% of the nodal tissue",
+    "No accompanying erythroid or myeloid hematopoietic precursors were identified",
+    "Immunohistochemical analysis demonstrated strong cytoplasmic positivity for CD61 (GPIIIa)",
+    "Factor VIII–related antigen was positive",
+    "Atypical cells were negative for cytokeratin, CD34, CD45, CD3, CK7, CD20, CD68, S100, and CD15"
+  ],
+  "management": [
+    "Laparoscopic cholecystectomy was performed"
+  ],
+  "outcome": [
+    "Postoperative course was uneventful with no reported complications",
+    "Splenomegaly was reported during subsequent postoperative clinical follow-up"
+  ],
+  "metadata": {
+    "folder_id": "41799793",
+    "original_xml_path": "demo_data/41799793/PMC12963451.1.xml",
+    "source_directory": "demo_data/41799793",
+    "optional_sections_requested": [
+      "authors",
+      "year",
+      "figures",
+      "tables",
+      "citations"
+    ],
+    "paper_sections_found": [
+      "1. Introduction",
+      "2. Case Presentation",
+      "3. Discussion",
+      "4. Conclusion",
+      "Author Contributions",
+      "Funding",
+      "Ethics Statement",
+      "Consent",
+      "Conflicts of Interest"
+    ]
+  }
+}

@@ -7,6 +7,7 @@ from .config import Settings
 from .data import load_case
 from .pipeline import MedCaseAgent
 from .skills import SkillLibrary
+from .tools import ToolLibrary
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,10 +36,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.validate_only:
         case = load_case(args.case_path)
-        skills = SkillLibrary(args.skills_dir or Path(__file__).resolve().parents[1] / "skills")
+        skill_dir = args.skills_dir or Path(__file__).resolve().parents[1] / "skills"
+        skills = SkillLibrary(skill_dir)
+        tools = ToolLibrary(skill_dir)
         print(f"case_id={case.case_id}")
         print(f"images={len(case.images)}")
         print(f"skills={', '.join(skills.names())}")
+        if settings.enable_tools:
+            print(f"tools={', '.join(tools.names())}")
+        else:
+            print("tools=disabled")
         return 0
 
     final_path = MedCaseAgent(settings, skill_dir=args.skills_dir).run_case(args.case_path)

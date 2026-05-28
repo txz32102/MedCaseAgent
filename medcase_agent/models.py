@@ -36,3 +36,4 @@ class StageResult:
     output: str
     response_id: str | None = None
     usage: dict[str, Any] = field(default_factory=dict)
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)

@@ -14,6 +14,7 @@ IMAGE_MIME = {
     ".png": "image/png",
     ".webp": "image/webp",
 }
+IMAGE_SUBDIRS = ("imgs", "images", "figures")
 TEXT_EXTS = {".md", ".txt", ".text", ".xml"}
 PREFERRED_JSON = ("case.json", "clinical_data.json", "record.json", "atoms.json")
 CASE_SECTION_ORDER = (
@@ -109,13 +110,31 @@ def _find_json(path: Path) -> Path | None:
 
 def _images(path: Path) -> list[ImageAsset]:
     images = []
-    for image_path in sorted(path.iterdir()):
+    for image_path in _image_paths(path):
         mime = IMAGE_MIME.get(image_path.suffix.lower())
         if not mime:
             continue
         ref = f"IMG_{len(images) + 1:03d}"
         images.append(ImageAsset(ref, image_path, mime, image_path.name))
     return images
+
+
+def _image_paths(path: Path) -> list[Path]:
+    candidates: list[Path] = []
+    search_dirs = [path]
+    search_dirs.extend(path / name for name in IMAGE_SUBDIRS)
+
+    seen: set[Path] = set()
+    for search_dir in search_dirs:
+        if not search_dir.is_dir():
+            continue
+        for candidate in sorted(search_dir.iterdir()):
+            resolved = candidate.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            candidates.append(candidate)
+    return candidates
 
 
 def _read_text_file(path: Path) -> str:

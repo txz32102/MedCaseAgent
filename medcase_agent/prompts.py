@@ -15,8 +15,8 @@ def instructions(stage: str, skills: str) -> str:
     return f"{BASE_INSTRUCTIONS}\n\n# Stage\n{stage}\n\n# Active Skills\n{skills}"
 
 
-def planner_prompt(case: ClinicalCase) -> str:
-    return f"""{case_context(case)}
+def planner_prompt(case: ClinicalCase, citation_bank: str = "") -> str:
+    return f"""{case_context(case, citation_bank)}
 
 Create a concise manuscript plan.
 
@@ -30,19 +30,21 @@ Return Markdown with exactly these headings:
 ## Risk Checks"""
 
 
-def writer_prompt(case: ClinicalCase, plan: str) -> str:
-    return f"""{case_context(case)}
+def writer_prompt(case: ClinicalCase, plan: str, citation_bank: str = "") -> str:
+    return f"""{case_context(case, citation_bank)}
 
 # Approved Plan
 {plan}
 
 Draft the manuscript in Markdown. Write the clinical article only. Keep section
-headings useful and conventional for a case report. Use image links exactly as
-shown in the image index when figures are relevant."""
+headings useful and conventional for a case report. Use verified citation-bank
+entries when supplied, and do not write that references are unavailable if a
+verified citation bank is present. Use image links exactly as shown in the image
+index when figures are relevant."""
 
 
-def refiner_prompt(case: ClinicalCase, plan: str, draft: str) -> str:
-    return f"""{case_context(case)}
+def refiner_prompt(case: ClinicalCase, plan: str, draft: str, citation_bank: str = "") -> str:
+    return f"""{case_context(case, citation_bank)}
 
 # Approved Plan
 {plan}
@@ -52,11 +54,19 @@ def refiner_prompt(case: ClinicalCase, plan: str, draft: str) -> str:
 
 Refine the draft into the final Markdown manuscript. Preserve factual alignment
 with the source case, remove unsupported statements, repair figure placement, and
-output only the final manuscript."""
+use verified citation-bank entries when supplied. Do not write that references
+are unavailable if a verified citation bank is present. Output only the final
+manuscript."""
 
 
-def case_context(case: ClinicalCase) -> str:
+def case_context(case: ClinicalCase, citation_bank: str = "") -> str:
     metadata = json.dumps(case.metadata, ensure_ascii=False, indent=2)
+    citation_section = ""
+    if citation_bank.strip():
+        citation_section = f"""
+
+## Verified Citation Bank
+{citation_bank.strip()}"""
     return f"""# Case Context
 Case ID: {case.case_id}
 Source: {case.source_path}
@@ -70,4 +80,4 @@ Source: {case.source_path}
 {case.text}
 
 ## Image Index
-{case.image_index()}"""
+{case.image_index()}{citation_section}"""
