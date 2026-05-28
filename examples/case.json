@@ -1,0 +1,22 @@
+{
+  "case_id": "demo_case",
+  "title": "Postoperative pulmonary abscess after lung cancer surgery",
+  "clinical_data": "A 63-year-old woman with prior left upper lobectomy for lung squamous cell carcinoma presented with cough, fever, poor oral intake, hypotension, leukocytosis, and cavitary left lower-lobe infiltrates. Broad-spectrum antibiotics and vasopressors were required. On hospital day 3 she underwent emergency left completion pneumonectomy for source control. Culture confirmed Pseudomonas aeruginosa. The postoperative course included hemothorax requiring reoperation, but sepsis improved and she was discharged on postoperative day 39.",
+  "diagnostics": [
+    "Admission white blood cell count 17000/uL and C-reactive protein 33.78 mg/dL.",
+    "Chest CT showed a cavitary lesion in the left lower lobe with surrounding infiltrates.",
+    "Postoperative culture confirmed Pseudomonas aeruginosa."
+  ],
+  "management": [
+    "Ampicillin/sulbactam was started empirically.",
+    "Antimicrobial therapy was escalated to meropenem and vancomycin.",
+    "Emergency left completion pneumonectomy was performed for infection source control."
+  ],
+  "outcome": [
+    "Vasopressors were discontinued by the second postoperative day.",
+    "The patient was discharged on postoperative day 39."
+  ],
+  "references": [
+    "No verified external references supplied in this demo record."
+  ]
+}

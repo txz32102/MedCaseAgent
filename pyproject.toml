@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medcase-agent"
+version = "0.1.0"
+description = "Three-stage clinical case report agent with prompt skills."
+requires-python = ">=3.12"
+dependencies = [
+  "openai>=2.0",
+  "python-dotenv>=1.0",
+  "PyYAML>=6.0",
+]
+
+[project.scripts]
+medcase-agent = "medcase_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["medcase_agent*"]
