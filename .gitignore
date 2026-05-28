@@ -3,6 +3,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+.venv
+.vscode/
+.vscode
 .env
 runs/
 dist/
