@@ -25,7 +25,8 @@ class ClinicalCase:
         if not self.images:
             return "No supported images found."
         return "\n".join(
-            f"- {image.ref}: {image.path.name} -> images/{image.output_name}"
+            f"- {image.ref}: {image.path.name} -> images/{image.output_name} "
+            f"(embed as `![Figure n](images/{image.output_name})`)"
             for image in self.images
         )
 

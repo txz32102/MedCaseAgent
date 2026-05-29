@@ -39,8 +39,9 @@ def writer_prompt(case: ClinicalCase, plan: str, citation_bank: str = "") -> str
 Draft the manuscript in Markdown. Write the clinical article only. Keep section
 headings useful and conventional for a case report. Use verified citation-bank
 entries when supplied, and do not write that references are unavailable if a
-verified citation bank is present. Use image links exactly as shown in the image
-index when figures are relevant."""
+verified citation bank is present. When figures are relevant, embed them with
+Markdown image syntax exactly as shown in the image index, for example
+`![Figure 1](images/example.jpg)`, followed by a compact caption."""
 
 
 def refiner_prompt(case: ClinicalCase, plan: str, draft: str, citation_bank: str = "") -> str:
@@ -55,8 +56,9 @@ def refiner_prompt(case: ClinicalCase, plan: str, draft: str, citation_bank: str
 Refine the draft into the final Markdown manuscript. Preserve factual alignment
 with the source case, remove unsupported statements, repair figure placement, and
 use verified citation-bank entries when supplied. Do not write that references
-are unavailable if a verified citation bank is present. Output only the final
-manuscript."""
+are unavailable if a verified citation bank is present. Ensure figures render as
+Markdown image blocks, for example `![Figure 1](images/example.jpg)`, followed
+by compact captions. Output only the final manuscript."""
 
 
 def case_context(case: ClinicalCase, citation_bank: str = "") -> str:

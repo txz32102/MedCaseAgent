@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -15,6 +16,19 @@ from .prompts import instructions, planner_prompt, refiner_prompt, writer_prompt
 from .skills import SkillLibrary
 from .tools import ToolLibrary
 
+
+IMAGE_PATH_RE = r"images/[^)\s]+?\.(?:jpe?g|png|webp)"
+BOLD_FIGURE_REF_RE = re.compile(
+    rf"\*\*(Figure\s+\d+[A-Za-z]?)\*\*\s*\(({IMAGE_PATH_RE})\)\s*"
+    rf"(.*?)(?=(?:\s*\*\*Figure\s+\d+[A-Za-z]?\*\*\s*\({IMAGE_PATH_RE}\)|\n\s*\n|$))",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+PLAIN_FIGURE_REF_RE = re.compile(
+    rf"(?<![\[!])\b(Figure\s+\d+[A-Za-z]?)\s*\(({IMAGE_PATH_RE})\)\s*"
+    rf"(.*?)(?=(?:\s+\bFigure\s+\d+[A-Za-z]?\s*\({IMAGE_PATH_RE}\)|\n\s*\n|$))",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+MARKDOWN_IMAGE_RE = re.compile(rf"!\[[^\]]*\]\(({IMAGE_PATH_RE})\)", flags=re.IGNORECASE)
 StreamWriter = Callable[[str], None]
 
 
@@ -82,6 +96,7 @@ class MedCaseAgent:
             writer_prompt(case, planner.output, citation_curator.output),
             case,
         )
+        writer = replace(writer, output=self._post_process_markdown(writer.output, case))
         self._write_stage(run_dir, 2, writer)
 
         refiner = self._stage(
@@ -89,6 +104,7 @@ class MedCaseAgent:
             refiner_prompt(case, planner.output, writer.output, citation_curator.output),
             case,
         )
+        refiner = replace(refiner, output=self._post_process_markdown(refiner.output, case))
         self._write_stage(run_dir, 3, refiner)
 
         final_path = run_dir / "final.md"
@@ -198,6 +214,12 @@ class MedCaseAgent:
         path = run_dir / f"{index:02d}_{result.name}.md"
         path.write_text(result.output.strip() + "\n", encoding="utf-8")
 
+    def _post_process_markdown(self, markdown: str, case: ClinicalCase) -> str:
+        if not markdown.strip() or not case.images:
+            return markdown
+        image_paths = {f"images/{image.output_name}" for image in case.images}
+        return _repair_markdown_image_links(markdown, image_paths)
+
     def _write_log(
         self,
         run_dir: Path,
@@ -294,3 +316,62 @@ def _extract_dois(text: str) -> list[str]:
         if doi not in dois:
             dois.append(doi)
     return dois
+
+
+def _repair_markdown_image_links(markdown: str, image_paths: set[str]) -> str:
+    """Repair common non-rendering figure references into Markdown image blocks."""
+    processed = markdown.strip()
+    if not processed or not image_paths:
+        return processed
+
+    processed = BOLD_FIGURE_REF_RE.sub(
+        lambda match: _figure_ref_replacement(match, image_paths),
+        processed,
+    )
+    processed = PLAIN_FIGURE_REF_RE.sub(
+        lambda match: _figure_ref_replacement(match, image_paths),
+        processed,
+    )
+    processed = _insert_missing_image_blocks(processed, image_paths)
+    processed = re.sub(r"\n[ \t]+(!\[)", r"\n\1", processed)
+    return re.sub(r"\n{3,}", "\n\n", processed).strip()
+
+
+def _figure_ref_replacement(match: re.Match[str], image_paths: set[str]) -> str:
+    label = match.group(1).strip()
+    image_path = match.group(2).strip()
+    if image_path not in image_paths:
+        return match.group(0)
+
+    caption = _clean_caption(match.group(3))
+    if not caption:
+        return f"![{label}]({image_path})\n\n"
+    return f"![{label}]({image_path})\n\n> **{label}:** {caption}\n\n"
+
+
+def _clean_caption(value: str) -> str:
+    caption = re.sub(r"\s+", " ", value or "").strip()
+    return caption.lstrip(" ,;:-")
+
+
+def _insert_missing_image_blocks(markdown: str, image_paths: set[str]) -> str:
+    processed = markdown
+    for image_path in sorted(image_paths):
+        if image_path not in processed or image_path in _rendered_image_paths(processed):
+            continue
+        index = processed.find(image_path)
+        line_start = processed.rfind("\n", 0, index) + 1
+        label = _nearby_figure_label(processed, index) or Path(image_path).stem
+        image_block = f"![{label}]({image_path})\n\n"
+        processed = processed[:line_start] + image_block + processed[line_start:]
+    return processed
+
+
+def _rendered_image_paths(markdown: str) -> set[str]:
+    return {match.group(1) for match in MARKDOWN_IMAGE_RE.finditer(markdown)}
+
+
+def _nearby_figure_label(markdown: str, index: int) -> str | None:
+    window = markdown[max(0, index - 100) : index]
+    matches = list(re.finditer(r"\bFigure\s+\d+[A-Za-z]?\b", window, flags=re.IGNORECASE))
+    return matches[-1].group(0) if matches else None

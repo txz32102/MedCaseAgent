@@ -195,6 +195,8 @@ def _case_id(path: Path, data: Any) -> str:
             value = metadata.get(key) or data.get(key)
             if value:
                 return _slug(str(value))
+    if path.name in PREFERRED_JSON and path.parent.name:
+        return _slug(path.parent.name)
     return _slug(path.stem.replace("_atoms", ""))
 
 

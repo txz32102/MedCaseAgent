@@ -27,28 +27,5 @@
   "outcome": [
     "Postoperative course was uneventful with no reported complications",
     "Splenomegaly was reported during subsequent postoperative clinical follow-up"
-  ],
-  "metadata": {
-    "folder_id": "41799793",
-    "original_xml_path": "demo_data/41799793/PMC12963451.1.xml",
-    "source_directory": "demo_data/41799793",
-    "optional_sections_requested": [
-      "authors",
-      "year",
-      "figures",
-      "tables",
-      "citations"
-    ],
-    "paper_sections_found": [
-      "1. Introduction",
-      "2. Case Presentation",
-      "3. Discussion",
-      "4. Conclusion",
-      "Author Contributions",
-      "Funding",
-      "Ethics Statement",
-      "Consent",
-      "Conflicts of Interest"
-    ]
-  }
+  ]
 }
