@@ -34,13 +34,13 @@ The configured provider documents the OpenAI-compatible Chat Completions path:
 ## Run
 
 ```bash
-/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent examples/case.json
+/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent examples/41799793/case.json
 ```
 
-Real copied case example:
+Run quietly and print only the final path:
 
 ```bash
-/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent examples/41799793/case.json
+/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent --no-stream examples/41799793/case.json
 ```
 
 Outputs are written to `runs/<case_id>_<timestamp>/`:
@@ -55,7 +55,7 @@ Outputs are written to `runs/<case_id>_<timestamp>/`:
 Validate input and skills without an API call:
 
 ```bash
-/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent --validate-only examples/case.json
+/home/data1/musong/workspace/2026/.venv/bin/python -m medcase_agent --validate-only examples/41799793/case.json
 ```
 
 ## Data Contract

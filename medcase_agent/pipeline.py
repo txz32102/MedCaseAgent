@@ -5,7 +5,7 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .config import PROJECT_ROOT, Settings
 from .data import load_case
@@ -14,6 +14,8 @@ from .models import ClinicalCase, StageResult
 from .prompts import instructions, planner_prompt, refiner_prompt, writer_prompt
 from .skills import SkillLibrary
 from .tools import ToolLibrary
+
+StreamWriter = Callable[[str], None]
 
 
 STAGE_SKILLS = {
@@ -48,22 +50,29 @@ class MedCaseAgent:
         settings: Settings,
         skill_dir: Path | None = None,
         llm: LLM | None = None,
+        stream: bool = False,
+        stream_writer: StreamWriter | None = None,
     ):
         self.settings = settings
         self.skill_dir = skill_dir or PROJECT_ROOT / "skills"
         self.skills = SkillLibrary(self.skill_dir)
         self.tools = ToolLibrary(self.skill_dir)
         self.llm = llm or LLM(settings)
+        self.stream = stream
+        self.stream_writer = stream_writer
 
     def run_case(self, case_path: Path) -> Path:
         case = load_case(case_path)
         run_dir = self._run_dir(case)
         run_dir.mkdir(parents=True, exist_ok=True)
         self._copy_images(case, run_dir)
+        self._emit(f"run_dir={run_dir}\n")
 
+        self._emit("stage=citation_curator status=running\n")
         citation_curator = self._curate_citations(case)
         if citation_curator.output:
             self._write_stage(run_dir, 0, citation_curator)
+        self._emit("stage=citation_curator status=done\n")
 
         planner = self._stage("planner", planner_prompt(case, citation_curator.output), case)
         self._write_stage(run_dir, 1, planner)
@@ -151,7 +160,8 @@ class MedCaseAgent:
         active_skills = STAGE_SKILLS[name]
         skill_text = self.skills.render(active_skills)
         tools = self.tools.schemas() if self.settings.enable_tools else []
-        return self.llm.run(
+        self._emit(f"\n--- {name} ---\n")
+        result = self.llm.run(
             stage=name,
             instructions=instructions(name, skill_text),
             prompt=prompt,
@@ -163,7 +173,14 @@ class MedCaseAgent:
                 "source_path": str(case.source_path),
             },
             tool_executor=self.tools.execute,
+            stream_writer=self.stream_writer if self.stream else None,
         )
+        self._emit(f"\n--- end {name} ---\n")
+        return result
+
+    def _emit(self, text: str) -> None:
+        if self.stream and self.stream_writer is not None:
+            self.stream_writer(text)
 
     def _run_dir(self, case: ClinicalCase) -> Path:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")

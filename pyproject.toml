@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 medcase-agent = "medcase_agent.cli:main"
+medcase_agent = "medcase_agent.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

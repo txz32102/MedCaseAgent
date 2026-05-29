@@ -11,6 +11,7 @@ from .models import ImageAsset, StageResult
 
 
 ToolExecutor = Callable[[str, dict[str, Any], dict[str, Any]], str]
+StreamWriter = Callable[[str], None]
 
 
 class LLM:
@@ -29,6 +30,7 @@ class LLM:
         tools: list[dict[str, Any]] | None = None,
         tool_context: dict[str, Any] | None = None,
         tool_executor: ToolExecutor | None = None,
+        stream_writer: StreamWriter | None = None,
     ) -> StageResult:
         return self._run_chat(
             stage,
@@ -38,6 +40,7 @@ class LLM:
             tools or [],
             tool_context or {},
             tool_executor,
+            stream_writer,
         )
 
     def _run_chat(
@@ -49,6 +52,7 @@ class LLM:
         tools: list[dict[str, Any]],
         tool_context: dict[str, Any],
         tool_executor: ToolExecutor | None,
+        stream_writer: StreamWriter | None,
     ) -> StageResult:
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": instructions},
@@ -72,29 +76,43 @@ class LLM:
             if self.settings.reasoning_effort:
                 kwargs["reasoning_effort"] = self.settings.reasoning_effort
 
-            response = self.client.chat.completions.create(**kwargs)
-            last_response_id = getattr(response, "id", None)
-            usage_items.append(_usage(response))
+            if stream_writer is None:
+                response = self.client.chat.completions.create(**kwargs)
+                last_response_id = getattr(response, "id", None)
+                usage_items.append(_usage(response))
 
-            message = response.choices[0].message if response.choices else None
-            if message is None:
-                break
+                message = response.choices[0].message if response.choices else None
+                if message is None:
+                    break
+                content = message.content or ""
+                tool_calls = list(getattr(message, "tool_calls", None) or [])
+                assistant_message = _message_dict(message)
+            else:
+                streamed = self._stream_completion(kwargs, stream_writer)
+                last_response_id = streamed["response_id"] or last_response_id
+                if streamed["usage"]:
+                    usage_items.append(streamed["usage"])
+                content = streamed["content"]
+                tool_calls = streamed["tool_calls"]
+                assistant_message = {
+                    "role": "assistant",
+                    "content": content or None,
+                    "tool_calls": tool_calls,
+                }
 
-            tool_calls = list(getattr(message, "tool_calls", None) or [])
             if not tool_calls:
                 return StageResult(
                     name=stage,
-                    output=(message.content or "").strip(),
+                    output=content.strip(),
                     response_id=last_response_id,
                     usage=_combine_usage(usage_items),
                     tool_calls=tool_log,
                 )
 
-            messages.append(_message_dict(message))
+            messages.append(assistant_message)
             for tool_call in tool_calls:
-                function = getattr(tool_call, "function", None)
-                function_name = getattr(function, "name", "")
-                arguments_text = getattr(function, "arguments", "") or "{}"
+                function_name = _tool_call_function_name(tool_call)
+                arguments_text = _tool_call_function_arguments(tool_call) or "{}"
                 log_entry: dict[str, Any] = {
                     "turn": turn + 1,
                     "name": function_name,
@@ -119,7 +137,7 @@ class LLM:
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": getattr(tool_call, "id", ""),
+                        "tool_call_id": _tool_call_id(tool_call),
                         "name": function_name,
                         "content": tool_result,
                     }
@@ -132,6 +150,49 @@ class LLM:
             usage=_combine_usage(usage_items),
             tool_calls=tool_log,
         )
+
+    def _stream_completion(
+        self,
+        kwargs: dict[str, Any],
+        stream_writer: StreamWriter,
+    ) -> dict[str, Any]:
+        content_parts: list[str] = []
+        tool_calls_by_index: dict[int, dict[str, Any]] = {}
+        response_id: str | None = None
+        usage: dict[str, Any] = {}
+
+        stream = self.client.chat.completions.create(**kwargs, stream=True)
+        for chunk in stream:
+            response_id = getattr(chunk, "id", None) or response_id
+            chunk_usage = _usage(chunk)
+            if chunk_usage:
+                usage = chunk_usage
+
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+
+            delta = getattr(choices[0], "delta", None)
+            if delta is None:
+                continue
+
+            content = getattr(delta, "content", None)
+            if content:
+                content_parts.append(content)
+                stream_writer(content)
+
+            for tool_call_delta in getattr(delta, "tool_calls", None) or []:
+                _merge_tool_call_delta(tool_calls_by_index, tool_call_delta)
+
+        return {
+            "content": "".join(content_parts),
+            "tool_calls": [
+                tool_call
+                for _, tool_call in sorted(tool_calls_by_index.items(), key=lambda item: item[0])
+            ],
+            "response_id": response_id,
+            "usage": usage,
+        }
 
 
 def _chat_content(prompt: str, images: list[ImageAsset]) -> list[dict[str, Any]]:
@@ -165,6 +226,60 @@ def _message_dict(message: Any) -> dict[str, Any]:
     if hasattr(message, "model_dump"):
         return message.model_dump(exclude_none=True)
     return dict(message)
+
+
+def _tool_call_id(tool_call: Any) -> str:
+    if isinstance(tool_call, dict):
+        return str(tool_call.get("id") or "")
+    return str(getattr(tool_call, "id", "") or "")
+
+
+def _tool_call_function_name(tool_call: Any) -> str:
+    function = tool_call.get("function") if isinstance(tool_call, dict) else getattr(tool_call, "function", None)
+    if isinstance(function, dict):
+        return str(function.get("name") or "")
+    return str(getattr(function, "name", "") or "")
+
+
+def _tool_call_function_arguments(tool_call: Any) -> str:
+    function = tool_call.get("function") if isinstance(tool_call, dict) else getattr(tool_call, "function", None)
+    if isinstance(function, dict):
+        return str(function.get("arguments") or "")
+    return str(getattr(function, "arguments", "") or "")
+
+
+def _merge_tool_call_delta(
+    tool_calls_by_index: dict[int, dict[str, Any]],
+    tool_call_delta: Any,
+) -> None:
+    index = getattr(tool_call_delta, "index", None)
+    if index is None:
+        index = len(tool_calls_by_index)
+
+    current = tool_calls_by_index.setdefault(
+        int(index),
+        {"id": "", "type": "function", "function": {"name": "", "arguments": ""}},
+    )
+
+    tool_call_id = getattr(tool_call_delta, "id", None)
+    if tool_call_id:
+        current["id"] = tool_call_id
+
+    tool_call_type = getattr(tool_call_delta, "type", None)
+    if tool_call_type:
+        current["type"] = tool_call_type
+
+    function = getattr(tool_call_delta, "function", None)
+    if function is None:
+        return
+
+    name = getattr(function, "name", None)
+    if name:
+        current["function"]["name"] += name
+
+    arguments = getattr(function, "arguments", None)
+    if arguments:
+        current["function"]["arguments"] += arguments
 
 
 def _combine_usage(items: list[dict[str, Any]]) -> dict[str, Any]:

@@ -26,6 +26,20 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Load the case and skills without calling the model.",
     )
+    stream_group = parser.add_mutually_exclusive_group()
+    stream_group.add_argument(
+        "--stream",
+        dest="stream",
+        action="store_true",
+        help="Stream stage output to the terminal while the model runs (default).",
+    )
+    stream_group.add_argument(
+        "--no-stream",
+        dest="stream",
+        action="store_false",
+        help="Run quietly and print only the final output path.",
+    )
+    parser.set_defaults(stream=True)
     args = parser.parse_args(argv)
 
     settings = Settings.load(
@@ -48,6 +62,15 @@ def main(argv: list[str] | None = None) -> int:
             print("tools=disabled")
         return 0
 
-    final_path = MedCaseAgent(settings, skill_dir=args.skills_dir).run_case(args.case_path)
-    print(f"final={final_path}")
+    final_path = MedCaseAgent(
+        settings,
+        skill_dir=args.skills_dir,
+        stream=args.stream,
+        stream_writer=_write_stdout,
+    ).run_case(args.case_path)
+    print(f"\nfinal={final_path}" if args.stream else f"final={final_path}")
     return 0
+
+
+def _write_stdout(text: str) -> None:
+    print(text, end="", flush=True)
